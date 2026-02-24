@@ -1,0 +1,21 @@
+.venv/
+.env
+.git/
+**/__pycache__
+**/*.pyc
+**/*.pyo
+**/*.pyd
+tests/
+docs/
+*.md
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+build/
+frontend/
+sample_data/
+evaluation/
+De-identification Sample Data.zip
+eapl_contract_redaction.zip

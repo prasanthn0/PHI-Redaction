@@ -1,0 +1,67 @@
+[tool.poetry]
+name = "hipaa-deidentification"
+version = "1.0.0"
+description = "AI-Powered HIPAA Medical De-identification System — detects and removes PHI from medical documents"
+authors = ["Prasanth"]
+readme = "README.md"
+packages = [
+    { include = "redaction", from = "src" },
+    { include = "api", from = "src" },
+    { include = "ui", from = "src" },
+]
+
+[tool.poetry.dependencies]
+python = ">=3.10,<3.13"
+
+# PDF processing
+pymupdf = ">=1.26.0"
+
+# OpenAI (supports both OpenAI and Azure OpenAI)
+openai = ">=2.0.0"
+
+# OCR support
+pytesseract = ">=0.3.10"
+Pillow = ">=10.0.0"
+
+# Environment management
+python-dotenv = ">=1.0.0"
+
+# FastAPI and server
+fastapi = ">=0.115.0"
+uvicorn = { version = ">=0.34.0", extras = ["standard"] }
+python-multipart = ">=0.0.20"
+aiofiles = ">=24.0.0"
+
+# Structured logging
+structlog = ">=24.0.0"
+
+# Rate limiting
+slowapi = ">=0.1.9"
+
+# Retry with exponential backoff
+tenacity = ">=8.2.0"
+
+# Settings management
+pydantic-settings = ">=2.0.0"
+
+# File type detection by magic bytes
+filetype = ">=1.2.0"
+
+# HTTP client for URL downloads
+httpx = ">=0.28.0"
+
+# Gradio UI
+gradio = ">=5.0.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = ">=8.0.0"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "llm: marks tests that call OpenAI (slow, incur cost) — skip with -m 'not llm'",
+]
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

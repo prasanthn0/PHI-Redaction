@@ -1,0 +1,30 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: hipaa-deidentification
+    ports:
+      - "8000:8000"
+    env_file: .env
+    environment:
+      - STORAGE_DIR=/app/storage
+      - CORS_ORIGINS=*
+      - LOG_FORMAT=console
+    volumes:
+      - deidentification-storage:/app/storage
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  deidentification-storage:
+    driver: local

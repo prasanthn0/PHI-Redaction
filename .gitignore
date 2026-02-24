@@ -1,0 +1,89 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+.venv/
+venv/
+ENV/
+
+# Environment variables (credentials)
+.env
+.env.local
+.env.*.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Data files (exclude binary documents from general tracking)
+*.pdf
+*.docx
+*.pptx
+*.xlsx
+
+# Test fixtures are the exception — they must be versioned
+!tests/data/*.pdf
+
+# Test data
+TestData/
+
+# Test outputs
+*_REDACTED.pdf
+*_metadata.json
+
+# Evaluation datasets
+evaluation/datasets/
+evaluation/results/
+
+# Requirements (binary docs)
+requirements/
+
+# Domain knowledge base
+domain-kb/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# pytest
+.pytest_cache/
+.coverage
+htmlcov/
+
+# mypy
+.mypy_cache/
+
+# Playwright MCP
+.playwright-mcp/
+
+# Claude Code
+.claude/
+CLAUDE.md
+
+# Local documentation (reviews, notes)
+docs/
