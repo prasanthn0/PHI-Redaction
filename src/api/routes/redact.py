@@ -154,6 +154,8 @@ async def deidentify_document(
             api_key=settings.azure_openai_api_key,
             deployment_name=settings.azure_openai_deployment_name,
             api_version=settings.azure_openai_api_version,
+            groq_api_key=settings.groq_api_key,
+            groq_model=settings.groq_model,
             enable_ocr=settings.ocr_enabled,
             deidentification_mode=deidentification_mode,
         )

@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     api_host: str = "0.0.0.0"
     api_port: int = 8000
 
-    # LLM Provider: "openai" or "azure"
+    # LLM Provider: "openai", "azure", or "groq"
     llm_provider: str = "openai"
 
     # OpenAI settings (used when llm_provider == "openai")
@@ -28,6 +28,10 @@ class Settings(BaseSettings):
     azure_openai_api_key: str = ""
     azure_openai_deployment_name: str = ""
     azure_openai_api_version: str = "2024-02-15-preview"
+
+    # Groq settings (used when llm_provider == "groq")
+    groq_api_key: str = ""
+    groq_model: str = "llama-3.3-70b-versatile"
 
     # OCR settings
     ocr_enabled: bool = True

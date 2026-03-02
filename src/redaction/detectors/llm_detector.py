@@ -57,6 +57,12 @@ class LLMDetector(BaseDetector):
         self.prompt_builder = prompt_builder or DefaultPromptBuilder()
         self.async_client = async_client
         self.temperature = temperature
+        logger.info(
+            "LLMDetector initialised | model: %s | async_client: %s | temperature: %s",
+            deployment_name,
+            "yes" if async_client is not None else "no (will use thread executor)",
+            temperature if temperature is not None else "model-default",
+        )
 
     def detect(
         self,
@@ -84,11 +90,29 @@ class LLMDetector(BaseDetector):
     ) -> List[SensitiveFinding]:
         """Run detection on a single page (sync)."""
         ctx = self.prompt_builder.build(page, categories, ai_prompt)
+        logger.debug(
+            "Calling LLM (sync) | model: %s | page: %d | text_length: %d chars",
+            self.deployment_name,
+            page.page_number,
+            len(page.text),
+        )
         try:
             response = self._call_api(ctx.messages)
-            return self._parse_response(response, page, ctx.valid_categories)
+            findings = self._parse_response(response, page, ctx.valid_categories)
+            logger.debug(
+                "LLM response received | page: %d | findings: %d",
+                page.page_number,
+                len(findings),
+            )
+            return findings
         except Exception as e:
-            logger.warning("LLM detection failed for page %d: %s", page.page_number, e)
+            logger.warning(
+                "LLM detection failed | model: %s | page: %d | error_type: %s | error: %s",
+                self.deployment_name,
+                page.page_number,
+                type(e).__name__,
+                e,
+            )
             return []
 
     @_retry_policy
@@ -101,7 +125,11 @@ class LLMDetector(BaseDetector):
         )
         if self.temperature is not None:
             kwargs["temperature"] = self.temperature
-        return self.client.chat.completions.create(**kwargs)
+        logger.debug("HTTP POST -> chat.completions | model: %s", self.deployment_name)
+        response = self.client.chat.completions.create(**kwargs)
+        raw = response.choices[0].message.content if response.choices else "<empty>"
+        logger.debug("Raw LLM response (first 500 chars): %.500s", raw)
+        return response
 
     async def detect_async(
         self,
@@ -146,12 +174,28 @@ class LLMDetector(BaseDetector):
     ) -> List[SensitiveFinding]:
         """Run detection on a single page (async)."""
         ctx = self.prompt_builder.build(page, categories, ai_prompt)
+        logger.debug(
+            "Calling LLM (async) | model: %s | page: %d | text_length: %d chars",
+            self.deployment_name,
+            page.page_number,
+            len(page.text),
+        )
         try:
             response = await self._call_api_async(ctx.messages)
-            return self._parse_response(response, page, ctx.valid_categories)
+            findings = self._parse_response(response, page, ctx.valid_categories)
+            logger.debug(
+                "LLM response received | page: %d | findings: %d",
+                page.page_number,
+                len(findings),
+            )
+            return findings
         except Exception as e:
             logger.warning(
-                "Async LLM detection failed for page %d: %s", page.page_number, e
+                "Async LLM detection failed | model: %s | page: %d | error_type: %s | error: %s",
+                self.deployment_name,
+                page.page_number,
+                type(e).__name__,
+                e,
             )
             return []
 
@@ -165,19 +209,48 @@ class LLMDetector(BaseDetector):
         )
         if self.temperature is not None:
             kwargs["temperature"] = self.temperature
-        return await self.async_client.chat.completions.create(**kwargs)
+        logger.debug("HTTP POST -> chat.completions (async) | model: %s", self.deployment_name)
+        response = await self.async_client.chat.completions.create(**kwargs)
+        raw = response.choices[0].message.content if response.choices else "<empty>"
+        logger.debug("Raw LLM response (first 500 chars): %.500s", raw)
+        return response
 
     def _parse_response(self, response, page: PageContent, valid_categories: set) -> List[SensitiveFinding]:
         """Parse and validate the LLM JSON response into SensitiveFinding objects."""
         content = response.choices[0].message.content
-        data = json.loads(content)
+        try:
+            data = json.loads(content)
+        except json.JSONDecodeError as e:
+            logger.warning(
+                "JSON parse error on LLM response | page: %d | error: %s | raw: %.300s",
+                page.page_number,
+                e,
+                content,
+            )
+            return []
+
+        raw_items = data.get("findings", [])
+        logger.debug(
+            "Parsing LLM findings | page: %d | raw_count: %d",
+            page.page_number,
+            len(raw_items),
+        )
 
         findings = []
-        for item in data.get("findings", []):
+        for item in raw_items:
             item_category = item.get("category", "")
             if item_category not in valid_categories:
+                logger.debug(
+                    "Dropping finding — unknown category: %r | text: %.80r",
+                    item_category,
+                    item.get("text", ""),
+                )
                 continue
             if item.get("text", "") not in page.text:
+                logger.debug(
+                    "Dropping finding — text not found in page: %.80r",
+                    item.get("text", ""),
+                )
                 continue
 
             raw_confidence = float(item.get("confidence", 0.8))

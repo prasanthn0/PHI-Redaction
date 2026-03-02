@@ -13,6 +13,77 @@ logger = logging.getLogger(__name__)
 _processing_history: list[dict] = []
 
 
+# ── System info helpers ─────────────────────────────────────────────────────
+
+def _get_system_info_md() -> str:
+    """Build the app setup markdown — no sensitive values exposed."""
+    try:
+        from api.config import get_settings
+        s = get_settings()
+    except Exception as exc:
+        return f"Could not load settings: `{exc}`"
+
+    if s.llm_provider == "azure":
+        provider_label = "Azure OpenAI"
+        model_name = s.azure_openai_deployment_name or "*(not set)*"
+        api_version = s.azure_openai_api_version
+        key_status = "Configured" if s.azure_openai_api_key else "Not set"
+        extra_rows = f"| **API Version** | `{api_version}` |\n"
+    elif s.llm_provider == "groq":
+        provider_label = "Groq"
+        model_name = s.groq_model
+        key_status = "Configured" if s.groq_api_key else "Not set"
+        extra_rows = ""
+    else:
+        provider_label = "OpenAI"
+        model_name = s.openai_model
+        key_status = "Configured" if s.openai_api_key else "Not set"
+        extra_rows = ""
+
+    temp_display = (
+        f"`{s.openai_temperature}`"
+        if s.llm_provider != "azure" and s.openai_temperature >= 0
+        else "*model default*"
+    )
+
+    return f"""### Application Setup
+
+| Setting | Value |
+|---------|-------|
+| **Application** | HIPAA Medical De-identification System |
+| **LLM Provider** | {provider_label} |
+| **Model** | `{model_name}` |
+| **API Key** | {key_status} |
+{extra_rows}| **Temperature** | {temp_display} |
+| **Default De-id Mode** | `{s.deidentification_mode}` |
+| **OCR Enabled** | {"Yes" if s.ocr_enabled else "No"} |
+| **Log Level** | `{s.log_level}` |
+| **Max File Size** | `{s.max_file_size_mb} MB` |
+| **Rate Limit** | `{s.rate_limit}` |
+| **Storage Directory** | `{s.storage_dir}` |
+| **API Host / Port** | `{s.api_host}:{s.api_port}` |
+
+---
+
+### About This App
+
+**HIPAA Safe Harbor De-identification** — automatically detects and removes
+Protected Health Information (PHI) from medical documents using an LLM, with
+three output modes:
+
+| Mode | Description |
+|------|-------------|
+| `mask` | Replaces PHI with a solid black box |
+| `placeholder` | Replaces PHI with `[CATEGORY]` tags |
+| `synthetic` | Replaces PHI with realistic fake data |
+
+PHI categories covered follow **45 CFR § 164.514(b)(2)**: patient names, dates,
+phone/fax numbers, email addresses, SSNs, medical record numbers, health plan
+numbers, account numbers, geographic data, ages over 89, device IDs, URLs,
+and IP addresses.
+"""
+
+
 def _get_pipeline(mode: str = "placeholder"):
     """Build a pipeline from the current settings."""
     from api.config import get_settings
@@ -28,6 +99,8 @@ def _get_pipeline(mode: str = "placeholder"):
         api_key=s.azure_openai_api_key,
         deployment_name=s.azure_openai_deployment_name,
         api_version=s.azure_openai_api_version,
+        groq_api_key=s.groq_api_key,
+        groq_model=s.groq_model,
         enable_ocr=s.ocr_enabled,
         deidentification_mode=mode,
     )
@@ -317,6 +390,15 @@ def create_ui() -> gr.Blocks:
                     wrap=True,
                 )
 
+            with gr.Tab("System Info", id="system"):
+
+                gr.Markdown("## System Information")
+
+                system_info_md = gr.Markdown(value=_get_system_info_md())
+
+                with gr.Row():
+                    refresh_info_btn = gr.Button("Refresh Info", size="sm")
+
         submit_btn.click(
             fn=process_document,
             inputs=[file_input, mode_input, confidence_input],
@@ -338,6 +420,12 @@ def create_ui() -> gr.Blocks:
             fn=refresh_dashboard,
             inputs=[],
             outputs=[dashboard_md, recent_table],
+        )
+
+        refresh_info_btn.click(
+            fn=_get_system_info_md,
+            inputs=[],
+            outputs=[system_info_md],
         )
 
     return demo
